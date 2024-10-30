@@ -1,39 +1,36 @@
 package com.example.myapplication.activities
 
+import com.example.myapplication.database.DatabaseHelper
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import com.example.myapplication.R
-import com.example.myapplication.database.DatabaseHelper
-import com.example.myapplication.helperClasses.UserSession
 
 class RegistrationActivity : ComponentActivity() {
-    private lateinit var editTextName: EditText
-    private lateinit var editTextLogin: EditText
-    private lateinit var editTextPassword: EditText
-    private lateinit var editTextPasswordConfirm: EditText
-    private lateinit var dbHelper: DatabaseHelper
+
+    private lateinit var databaseHelper: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val isTablet = resources.getBoolean(R.bool.is_tablet)
+        if (!isTablet) {
+            // Если это телефон, фиксируем ориентацию в портретной
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
         setContentView(R.layout.activity_registration)
 
+        // Инициализация базы данных
+        databaseHelper = DatabaseHelper(this)
+
         val buttonLogin = findViewById<Button>(R.id.buttonAuth)
-
-        editTextName = findViewById(R.id.editTextText) // Имя
-        editTextLogin = findViewById(R.id.editTextLoginRegistr) // Логин
-        editTextPassword = findViewById(R.id.editTextPasswordReg) // Пароль
-        editTextPasswordConfirm = findViewById(R.id.editTextPasswordRegConfirm) // Подтверждение пароля
-
         val buttonRegister = findViewById<Button>(R.id.buttonRegister)
-        dbHelper = DatabaseHelper(this) // Инициализация DatabaseHelper
-
-        buttonRegister.setOnClickListener {
-            registerUser()
-        }
+        val editTextName = findViewById<EditText>(R.id.editTextText)
+        val editTextLogin = findViewById<EditText>(R.id.editTextLoginRegistr)
+        val editTextPassword = findViewById<EditText>(R.id.editTextPasswordReg)
 
         // Обработка нажатия кнопки "Авторизация"
         buttonLogin.setOnClickListener {
@@ -41,61 +38,36 @@ class RegistrationActivity : ComponentActivity() {
             startActivity(intent)
             finish()
         }
-    }
+        buttonRegister.setOnClickListener {
+            val name = editTextName.text.toString()
+            val login = editTextLogin.text.toString()
+            val password = editTextPassword.text.toString()
 
-    private fun registerUser() {
-        val name = editTextName.text.toString().trim()
-        val login = editTextLogin.text.toString().trim()
-        val password = editTextPassword.text.toString().trim()
-        val passwordConfirm = editTextPasswordConfirm.text.toString().trim()
+            if (name.isNotEmpty() && login.isNotEmpty() && password.isNotEmpty()) {
+                // Добавление пользователя в базу данных
+                val userId = databaseHelper.addUser(name, login, password)
 
-        // Проверка на пустые поля
-        if (name.isEmpty() || login.isEmpty() || password.isEmpty() || passwordConfirm.isEmpty()) {
-            Toast.makeText(this, "Пожалуйста, заполните все поля", Toast.LENGTH_SHORT).show()
-            return
-        }
+                if (userId != -1L) {
+                    Toast.makeText(this, "Регистрация успешна", Toast.LENGTH_SHORT).show()
 
-        // Проверка совпадения паролей
-        if (password != passwordConfirm) {
-            Toast.makeText(this, "Пароли не совпадают", Toast.LENGTH_SHORT).show()
-            return
-        }
+                    // Сохранение ID пользователя в SharedPreferences
+                    val sharedPreferences = getSharedPreferences("user_prefs", MODE_PRIVATE)
+                    val editor = sharedPreferences.edit()
+                    editor.putLong("user_id", userId)
+                    editor.apply()
 
-       /* // Проверка на существующий логин
-        val cursor = dbHelper.getAllData()
-        while (cursor.moveToNext()) {
-            val existingLogin = cursor.getString(cursor.getColumnIndexOrThrow("login"))
-            if (existingLogin == login) {
-                Toast.makeText(this, "Пользователь с таким логином уже существует", Toast.LENGTH_SHORT).show()
-                cursor.close()
-                return
+                    // Переход на следующую активность
+                    val intent = Intent(this, CycleSettingsActivity::class.java)
+                    intent.putExtra("user_id", userId) // Передача ID
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Toast.makeText(this, "Ошибка регистрации", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Все поля должны быть заполнены", Toast.LENGTH_SHORT).show()
             }
-        }
-        cursor.close()
-
-        // Сохранение данных в базе данных
-        val result = dbHelper.insertData(name, login, password)
-
-        if (result != -1L) {
-            // Сохранение ID пользователя в UserSession
-            UserSession.setUserId(result.toInt()) // Предполагая, что result - это ID пользователя
-
-            Toast.makeText(this, "Регистрация успешна!", Toast.LENGTH_SHORT).show()
-            val intent = Intent(this, CycleSettingsActivity::class.java)
-            startActivity(intent)
-            finish() // Закрываем RegistrationActivity, чтобы пользователь не мог вернуться назад
-        } else {
-            Toast.makeText(this, "Ошибка регистрации, попробуйте снова", Toast.LENGTH_SHORT).show()
-        }*/
-        if (/*isAuthenticated*/login.isNotEmpty() && password.isNotEmpty()) {
-            // Если логин и пароль верны, переходим на экран профиля
-            val intent = Intent(this, ProfileActivity::class.java)
-            startActivity(intent)
-            finish() // Закрываем LoginActivity
-        } else {
-            // Обработка неверного логина/пароля
-            editTextPassword.error = "Неверный логин или пароль"
-            Toast.makeText(this, "Неверный логин или пароль", Toast.LENGTH_SHORT).show()
         }
     }
 }
+

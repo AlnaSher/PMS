@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/holo_red_light"
+    android:padding="24dp"
+    tools:context=".MainActivity">
+
+    <!-- ScrollView для прокручиваемого содержимого -->
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Основной вертикальный контейнер -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Горизонтальный контейнер для иконки и заголовка -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Иконка настроек -->
+                <ImageView
+                    android:id="@+id/imageViewSettings"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_marginEnd="16dp"
+                    android:src="@drawable/free_icon_setting_2040504"
+                    android:contentDescription="Settings Icon" />
+
+                <!-- Заголовок с текущим месяцем и годом -->
+                <TextView
+                    android:id="@+id/textViewMonthYear"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textColor="@android:color/white"
+                    android:textSize="40sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <!-- Сетка для отображения дней месяца -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerViewCalendar"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="20dp"
+                android:background="@android:color/white"
+                android:padding="16dp"
+                android:scrollbars="none" />
+
+            <!-- Кнопка "Отметить месячные" -->
+            <Button
+                android:id="@+id/buttonMarkPeriod"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp"
+                android:text="Отметить месячные"
+                android:textSize="24sp" />
+
+            <!-- Кнопка "Отметить симптомы" -->
+            <Button
+                android:id="@+id/buttonMarkSymptoms"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:text="Отметить симптомы"
+                android:textSize="24sp" />
+
+            <!-- Кнопка для перехода на страницу полной статистики -->
+            <Button
+                android:id="@+id/buttonFullStatistics"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:text="Полная статистика"
+                android:textSize="24sp" />
+
+            <!-- Отображение статистики за последний цикл -->
+
+            <!-- Прогноз симптомов на сегодня -->
+            <TextView
+                android:id="@+id/textViewSymptomForecast"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:gravity="center"
+                android:text="Прогноз симптомов на сегодня"
+                android:textColor="@android:color/white"
+                android:textSize="28sp" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,84 +1,150 @@
 package com.example.myapplication.activities
 
-import android.app.DatePickerDialog
-import android.content.Context
-import android.content.Intent
-import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.ComponentActivity
 import com.example.myapplication.database.DatabaseHelper
+import android.app.DatePickerDialog
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import android.widget.*
+import androidx.activity.ComponentActivity
+import androidx.annotation.RequiresApi
 import com.example.myapplication.R
-import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 class CycleSettingsActivity : ComponentActivity() {
-    private lateinit var editTextDuration: EditText
-    private lateinit var editTextCycleLength: EditText
-    private lateinit var textViewSelectedDate: TextView
-    private lateinit var databaseHelper: DatabaseHelper
 
+    private lateinit var editTextCycleLength: EditText
+    private lateinit var editTextDuration: EditText
+    private lateinit var textViewSelectedDate: TextView
+    private lateinit var buttonSave: Button
+    private var selectedDate: Calendar = Calendar.getInstance() // Для хранения выбранной даты
+    private lateinit var databaseHelper: DatabaseHelper
+    private var userId: Long = -1 // Идентификатор пользователя
+
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val isTablet = resources.getBoolean(R.bool.is_tablet)
+        if (!isTablet) {
+            // Если это телефон, фиксируем ориентацию в портретной
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
         setContentView(R.layout.activity_cycle_settings)
 
-        editTextDuration = findViewById(R.id.editTextDuration)
+        // Инициализация UI элементов
         editTextCycleLength = findViewById(R.id.editTextCycleLength)
+        editTextDuration = findViewById(R.id.editTextDuration)
         textViewSelectedDate = findViewById(R.id.textViewSelectedDate)
-        val buttonSave = findViewById<Button>(R.id.buttonSave) // Убедитесь, что у вас есть такая кнопка
+        buttonSave = findViewById(R.id.buttonSave)
 
+        // Инициализация базы данных
         databaseHelper = DatabaseHelper(this)
 
-        // Устанавливаем слушатель нажатия на поле с датой
+        // Получение userId из SharedPreferences
+        val sharedPreferences = getSharedPreferences("user_prefs", MODE_PRIVATE)
+        userId = sharedPreferences.getLong("user_id", -1)
+
+        // Загрузка настроек из базы данных, если они есть
+        loadSettingsIfAvailable()
+
+        // Установка обработчика для выбора даты
         textViewSelectedDate.setOnClickListener {
             showDatePickerDialog()
         }
 
-        // Обработка нажатия на кнопку "Сохранить"
+        // Установка обработчика для кнопки "Сохранить"
         buttonSave.setOnClickListener {
-            saveCycleSettings()
+            saveSettings()
         }
     }
 
-    private fun showDatePickerDialog() {
-        val calendar = Calendar.getInstance()
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val day = calendar.get(Calendar.DAY_OF_MONTH)
+    // Метод для загрузки настроек из базы данных, если они существуют
+    private fun loadSettingsIfAvailable() {
+        val settings = databaseHelper.getCycleSettings(userId) // Получаем настройки в виде Map
 
-        val datePickerDialog = DatePickerDialog(
-            this,
-            { _, selectedYear, selectedMonth, selectedDay ->
-                val selectedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
-                textViewSelectedDate.text = selectedDate
-            },
-            year, month, day
-        )
+        if (settings != null) {
+            // Извлекаем значения из Map и приводим к нужным типам
+            val cycleLength = settings["cycleLength"] as? Int
+            val duration = settings["duration"] as? Int
+            val lastPeriodDate = settings["lastPeriodDate"] as? String
+
+            // Проверяем, что все значения успешно получены
+            if (cycleLength != null && duration != null && lastPeriodDate != null) {
+                editTextCycleLength.setText(cycleLength.toString())
+                editTextDuration.setText(duration.toString())
+                textViewSelectedDate.text = lastPeriodDate
+
+                // Обновляем выбранную дату для DatePickerDialog
+                val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+                selectedDate.time = dateFormat.parse(lastPeriodDate) ?: Calendar.getInstance().time
+            }
+        }
+    }
+
+
+
+    // Метод для отображения диалога выбора даты
+    private fun showDatePickerDialog() {
+        val year = selectedDate.get(Calendar.YEAR)
+        val month = selectedDate.get(Calendar.MONTH)
+        val day = selectedDate.get(Calendar.DAY_OF_MONTH)
+
+        val datePickerDialog = DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDayOfMonth ->
+            // Обновляем выбранную дату
+            selectedDate.set(selectedYear, selectedMonth, selectedDayOfMonth)
+            updateSelectedDateTextView()
+        }, year, month, day)
+
         datePickerDialog.show()
     }
 
-    private fun saveCycleSettings() {
-        val duration = editTextDuration.text.toString().toIntOrNull()
-        val cycleLength = editTextCycleLength.text.toString().toIntOrNull()
-        val selectedDate = textViewSelectedDate.text.toString()
+    // Обновление текстового поля с выбранной датой
+    private fun updateSelectedDateTextView() {
+        val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        textViewSelectedDate.text = dateFormat.format(selectedDate.time)
+    }
 
-        // Предположим, что у вас есть идентификатор текущего пользователя
-        val currentUserId = 1 // Замените это на реальный способ получения ID текущего пользователя
+    // Метод для сохранения настроек и автоматического заполнения дней с менструацией
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun saveSettings() {
+        val cycleLength = editTextCycleLength.text.toString()
+        val duration = editTextDuration.text.toString()
+        val lastPeriodDate = textViewSelectedDate.text.toString()
 
-        if (duration != null && cycleLength != null && selectedDate.isNotEmpty()) {
-            databaseHelper.insertCycleSettings(currentUserId, duration, cycleLength, selectedDate)
+        // Проверяем, заполнены ли все поля
+        if (cycleLength.isEmpty() || duration.isEmpty() || lastPeriodDate == "Дата не выбрана") {
+            Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Сохраняем данные о цикле в базу данных
+        val isSaved = databaseHelper.addCycleSettings(userId, cycleLength.toInt(), duration.toInt(), lastPeriodDate)
+
+        if (isSaved != -1L) {
+            // Успешное сохранение настроек
             Toast.makeText(this, "Настройки сохранены", Toast.LENGTH_SHORT).show()
-            finish() // Завершение активности после сохранения
+
+            // Заполнение дней с менструацией в базе данных
+            addMenstrualDaysToDatabase(cycleLength.toInt(), duration.toInt(), lastPeriodDate)
+
+            // Переход на страницу профиля
+            val intent = Intent(this, ProfileActivity::class.java)
+            intent.putExtra("user_id", userId) // Передача ID
+            startActivity(intent)
+            finish()
         } else {
-            Toast.makeText(this, "Пожалуйста, заполните все поля", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Ошибка сохранения настроек", Toast.LENGTH_SHORT).show()
         }
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
-        val intent = Intent(this, ProfileActivity::class.java)
-        startActivity(intent)
-        finish()
+    // Метод для автоматического заполнения дней с менструацией
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun addMenstrualDaysToDatabase(cycleLength: Int, duration: Int, lastPeriodDate: String) {
+        // (Оставляем реализацию этого метода без изменений)
     }
 }

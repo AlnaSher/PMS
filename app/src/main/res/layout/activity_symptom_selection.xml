@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Категория симптомов настроения -->
+        <TextView
+            android:id="@+id/textViewMood"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Настроение"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:id="@+id/layoutMoodSymptoms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp">
+            <!-- CheckBoxes для симптомов настроения -->
+            <CheckBox
+                android:id="@+id/checkBoxHappy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Счастливое настроение" />
+
+            <CheckBox
+                android:id="@+id/checkBoxSad"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Грустное настроение" />
+
+            <CheckBox
+                android:id="@+id/checkBoxAnxious"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Тревожное настроение" />
+
+            <CheckBox
+                android:id="@+id/checkBoxIrritable"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Раздражительное настроение" />
+
+            <CheckBox
+                android:id="@+id/checkBoxCalm"
+                android:layout_width="364dp"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Спокойное настроение" />
+        </LinearLayout>
+
+        <!-- Категория вагинальных выделений -->
+        <TextView
+            android:id="@+id/textViewVaginalDischarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Вагинальные выделения"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:id="@+id/layoutVaginalDischargeSymptoms"
+            android:layout_width="383dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+            <!-- CheckBoxes для симптомов выделений -->
+            <CheckBox
+                android:id="@+id/checkBoxNormal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Нормальные выделения" />
+
+            <CheckBox
+                android:id="@+id/checkBoxAbnormal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Аномальные выделения" />
+
+            <CheckBox
+                android:id="@+id/checkBoxItching"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Зуд" />
+
+            <CheckBox
+                android:id="@+id/checkBoxOdor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Неприятный запах" />
+
+            <CheckBox
+                android:id="@+id/checkBoxColorChange"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Изменение цвета" />
+        </LinearLayout>
+
+        <!-- Категория физической активности -->
+        <TextView
+            android:id="@+id/textViewPhysicalActivity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Физическая активность"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="16dp" />
+
+        <RadioGroup
+            android:id="@+id/radioGroupPhysicalActivity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp">
+
+            <!-- RadioButtons для симптомов физической активности -->
+            <RadioButton
+                android:id="@+id/radioButtonActive"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Активная" />
+
+            <RadioButton
+                android:id="@+id/radioButtonModerate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Умеренная" />
+
+            <RadioButton
+                android:id="@+id/radioButtonInactive"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Неактивная" />
+
+            <RadioButton
+                android:id="@+id/radioButtonExhausted"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Истощенная" />
+
+            <RadioButton
+                android:id="@+id/radioButtonEnergetic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Энергичная" />
+        </RadioGroup>
+
+        <!-- Категория симптомов боли в теле -->
+        <TextView
+            android:id="@+id/textViewBodyPain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Боль в теле"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:id="@+id/layoutBodyPainSymptoms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp">
+            <!-- CheckBoxes для симптомов боли -->
+            <CheckBox
+                android:id="@+id/checkBoxHeadache"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Головная боль" />
+
+            <CheckBox
+                android:id="@+id/checkBoxBackPain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Боль в спине" />
+            <CheckBox
+                android:id="@+id/checkBoxAbdominalPain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Боль в животе" />
+            <CheckBox
+                android:id="@+id/checkBoxJointPain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Боль в суставах" />
+            <CheckBox
+                android:id="@+id/checkBoxMusclePain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Мышечная боль" />
+        </LinearLayout>
+
+        <!-- Категория состояния кожи -->
+        <TextView
+            android:id="@+id/textViewSkinCondition"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Состояние кожи"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:id="@+id/layoutSkinConditionSymptoms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp">
+            <!-- CheckBoxes для симптомов состояния кожи -->
+            <CheckBox
+                android:id="@+id/checkBoxAcne"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Акне" />
+            <CheckBox
+                android:id="@+id/checkBoxDrySkin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Сухая кожа" />
+            <CheckBox
+                android:id="@+id/checkBoxOilySkin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Жирная кожа" />
+            <CheckBox
+                android:id="@+id/checkBoxRash"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Сыпь" />
+            <CheckBox
+                android:id="@+id/checkBoxRedness"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Покраснение" />
+        </LinearLayout>
+
+        <!-- Кнопка для сохранения симптомов -->
+        <Button
+            android:id="@+id/buttonSaveSymptoms"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Сохранить"
+            android:layout_marginTop="24dp" />
+    </LinearLayout>
+</ScrollView>

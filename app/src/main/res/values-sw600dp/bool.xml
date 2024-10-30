@@ -1,0 +1,4 @@
+<!-- res/values-sw600dp/bools.xml -->
+<resources>
+    <bool name="is_tablet">true</bool>
+</resources>

@@ -8,17 +8,23 @@
     tools:context=".MainActivity">
 
     <!-- Заголовок с текущим месяцем и годом -->
+
+    <!-- Сетка для отображения дней месяца -->
+
     <TextView
         android:id="@+id/textViewMonthYear"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="250dp"
+        android:layout_height="90dp"
+        android:layout_marginTop="16dp"
         android:textSize="34sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.496"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Сетка для отображения дней месяца -->
+    <!-- Кнопка "Отметить месячные" -->
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewCalendar"
         android:layout_width="match_parent"
@@ -34,7 +40,6 @@
         app:layout_constraintTop_toBottomOf="@id/textViewMonthYear"
         app:layout_constraintVertical_bias="0.0" />
 
-    <!-- Кнопка "Отметить месячные" -->
     <Button
         android:id="@+id/buttonMarkPeriod"
         android:layout_width="wrap_content"
@@ -57,19 +62,10 @@
         app:layout_constraintTop_toBottomOf="@id/buttonMarkPeriod" />
 
     <!-- Отображение статистики за последний цикл -->
-    <TextView
-        android:id="@+id/textViewCycleStats"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Статистика последнего цикла"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonMarkSymptoms" />
 
     <!-- Кнопка для перехода на страницу полной статистики -->
+
+    <!-- Прогноз симптомов на сегодня -->
     <Button
         android:id="@+id/buttonFullStatistics"
         android:layout_width="wrap_content"
@@ -78,9 +74,8 @@
         android:text="Полная статистика"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewCycleStats" />
+        app:layout_constraintTop_toBottomOf="@+id/buttonMarkSymptoms" />
 
-    <!-- Прогноз симптомов на сегодня -->
     <TextView
         android:id="@+id/textViewSymptomForecast"
         android:layout_width="0dp"
@@ -92,5 +87,19 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/buttonFullStatistics" />
+
+    <ImageView
+        android:id="@+id/imageViewSettings"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="4dp"
+        app:layout_constraintBottom_toTopOf="@+id/recyclerViewCalendar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.046"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
+        app:srcCompat="@drawable/free_icon_setting_2040504" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

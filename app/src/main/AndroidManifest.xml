@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -27,6 +28,15 @@
         <activity android:name=".activities.LoginActivity" />
         <activity android:name=".activities.ProfileActivity"/>
         <activity android:name=".activities.RegistrationActivity"/>
+        <activity android:name=".activities.SymptomSelectionActivity"/>
+        <activity android:name=".activities.CommonSettingsViewActivity"/>
+        <activity android:name=".activities.CommonSettingsUpdateActivity"/>
+        <activity android:name=".activities.CycleSettingsActivity"/>
+        <activity android:name=".activities.StatisticsActivity"/>
+
+        <receiver android:name=".helperClasses.PeriodNotificationReceiver" />
+
+
 
     </application>
 
