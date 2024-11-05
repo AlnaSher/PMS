@@ -187,7 +187,6 @@ class ProfileActivity : ComponentActivity() {
         return days
     }
 
-    // Отметить месячные для выбранного дня
     @RequiresApi(Build.VERSION_CODES.O)
     private fun markPeriodForSelectedDay(userId: Long) {
         val selectedDay = adapter.getSelectedDay() ?: run {
@@ -226,57 +225,53 @@ class ProfileActivity : ComponentActivity() {
 
         // Проверяем, был ли отмечен предыдущий день как менструация
         val previousDay = selectedDay.date.minusDays(1)
-        if (!dbHelper.isDayMarkedAsMenstruation(userId, previousDay.format(dateFormatter))) {
-            // Если предыдущий день не отмечен, продолжаем
-            // Определяем дату окончания цикла
-            var endDate = previousDay // Предыдущий день
+        if (!dbHelper.isDayMarkedAsMenstruation(userId, previousDay)) {
+            // Если предыдущий день не отмечен, то сохраняем прошлый цикл и добавляем день овуляции
 
-            // Проверяем, отмечен ли предыдущий день как менструация
-            while (dbHelper.isDayMarkedAsMenstruation(userId, endDate.format(dateFormatter))) {
+            // Определяем дату окончания предыдущего цикла
+            var endDate = previousDay
+
+            // Находим последний день предыдущего цикла
+            while (dbHelper.isDayMarkedAsMenstruation(userId, endDate)) {
                 endDate = endDate.minusDays(1)
             }
-
             val endDateString = endDate.format(dateFormatter)
 
-            // Получаем все уникальные симптомы в интервале между startDate и endDate
-            val symptomsSet = mutableSetOf<String>() // Для хранения уникальных симптомов
+            // Получаем все уникальные симптомы между startDate и endDate
+            val symptomsSet = mutableSetOf<String>()
             val symptomsRecords = dbHelper.getSymptomsInCycle(userId, endDateString, selectedDay.date.toString())
             for (symptom in symptomsRecords) {
-                symptomsSet.add(symptom) // Добавляем уникальные симптомы
+                symptomsSet.add(symptom)
             }
-
-            // Формируем строку симптомов
             val symptoms = symptomsSet.joinToString(", ")
 
-            // Создаем объект Cycle и сохраняем его в базе данных
+            // Создаем и сохраняем цикл
             val cycle = Cycle(
-                id = userId, // ID будет сгенерирован автоматически
+                id = userId,
                 startDate = lastPeriodDateString,
                 endDate = endDateString,
                 length = cycleLength,
                 symptoms = symptoms
             )
+            dbHelper.insertCycle(cycle, userId)
 
-            dbHelper.insertCycle(cycle, userId) // Сохраняем цикл в базе данных
-
-            // Устанавливаем день овуляции только если:
-            // 1. Отмечен текущий день как менструация
-            // 2. Предыдущий день не отмечен как менструация
-            // 3. Предыдущий день не отмечен как овуляция
-            val ovulationDay = selectedDay.date.plusDays(14) // 14-й день от начала цикла
-
+            // Устанавливаем день овуляции
+            val ovulationDay = selectedDay.date.plusDays(14) // 14-й день от начала нового цикла
             if (!dbHelper.isDayMarkedAsOvulation(userId, ovulationDay.toString())) {
                 dbHelper.addOrUpdateDayStatus(userId, ovulationDay, DayStatus.OVULATION.description, 1) // Помечаем день овуляции
             }
 
-            // Обновляем адаптер и уведомляем пользователя
-            adapter.notifyDataSetChanged()
-            Toast.makeText(this, "Месячные отмечены и сохранены", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Месячные отмечены, овуляция добавлена, цикл сохранен", Toast.LENGTH_SHORT).show()
+
         } else {
-            // Если предыдущий день уже отмечен как менструация, уведомляем пользователя
-            Toast.makeText(this, "Предыдущий день уже отмечен как менструация. Цикл не сохранен.", Toast.LENGTH_SHORT).show()
+            // Если предыдущий день уже отмечен как менструация, просто сохраняем текущий день
+            Toast.makeText(this, "Месячные отмечены и сохранены", Toast.LENGTH_SHORT).show()
         }
+
+        // Обновляем адаптер
+        adapter.notifyDataSetChanged()
     }
+
 
 
 

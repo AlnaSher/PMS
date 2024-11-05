@@ -5,15 +5,19 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.example.myapplication.helperClasses.*
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
         private const val DATABASE_NAME = "users.db"
-        private const val DATABASE_VERSION = 9 // Обновляем версию для миграции
+        private const val DATABASE_VERSION = 10 // Обновляем версию для миграции
 
         // Таблицы и столбцы
         private const val TABLE_USERS = "users"
@@ -111,12 +115,14 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         """.trimIndent()
 
         val createCyclesTable = """
-        CREATE TABLE IF NOT EXISTS Cycles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            startDate TEXT NOT NULL,
-            endDate TEXT NOT NULL,
-            length INTEGER NOT NULL,
-            symptoms TEXT
+        CREATE TABLE IF NOT EXISTS $TABLE_CYCLES (
+            $COLUMN_CYCLES_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            $COLUMN_USER_ID INTEGER NOT NULL, -- новый столбец для идентификатора пользователя
+            $COLUMN_START_DATE TEXT NOT NULL,
+            $COLUMN_END_DATE TEXT NOT NULL,
+            $COLUMN_LENGTH INTEGER NOT NULL,
+            $COLUMN_CYCLES_SYMPTOMS TEXT,
+            FOREIGN KEY($COLUMN_USER_ID) REFERENCES $TABLE_USERS($COLUMN_ID) -- связь с таблицей пользователей
         )
         """.trimIndent()
 
@@ -153,28 +159,51 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return db.insert(TABLE_USERS, null, contentValues)
     }
 
-    fun addCycleSettings(userId: Long, cycleLength: Int, duration: Int, lastPeriodDate: String): Long {
+    fun addOrUpdateCycleSettings(userId: Long, cycleLength: Int, duration: Int, lastPeriodDate: String): Long {
         val db = this.writableDatabase
-        val contentValues = ContentValues().apply {
-            put("user_id", userId)
-            put(COLUMN_CYCLE_LENGTH, cycleLength)
-            put(COLUMN_DURATION, duration)
-            put(COLUMN_LAST_PERIOD_DATE, lastPeriodDate)
-        }
 
-        val id = db.insert(TABLE_CYCLE_SETTINGS, null, contentValues)
-        return id // Возвращаем ID новой записи
+        // Проверяем, существует ли запись для данного userId
+        val query = "SELECT * FROM $TABLE_CYCLE_SETTINGS WHERE user_id = ?"
+        val cursor = db.rawQuery(query, arrayOf(userId.toString()))
+
+        return if (cursor.moveToFirst()) {
+            // Если запись существует, обновляем ее
+            val contentValues = ContentValues().apply {
+                put(COLUMN_CYCLE_LENGTH, cycleLength)
+                put(COLUMN_DURATION, duration)
+                put(COLUMN_LAST_PERIOD_DATE, lastPeriodDate)
+            }
+
+            // Обновляем запись по user_id
+            val rowsAffected = db.update(TABLE_CYCLE_SETTINGS, contentValues, "user_id = ?", arrayOf(userId.toString()))
+            cursor.close()
+            rowsAffected.toLong() // Возвращаем количество затронутых строк (или ID обновленной записи)
+        } else {
+            // Если записи не существует, создаем новую
+            val contentValues = ContentValues().apply {
+                put("user_id", userId)
+                put(COLUMN_CYCLE_LENGTH, cycleLength)
+                put(COLUMN_DURATION, duration)
+                put(COLUMN_LAST_PERIOD_DATE, lastPeriodDate)
+            }
+
+            val id = db.insert(TABLE_CYCLE_SETTINGS, null, contentValues)
+            cursor.close()
+            id // Возвращаем ID новой записи
+        }
     }
 
-    fun insertCycle(cycle: Cycle) {
+
+    fun insertCycle(cycle: Cycle, userId: Long) {
         val db = this.writableDatabase // Получаем доступ к базе данных для записи
 
         // Создаем объект ContentValues для хранения значений
         val values = ContentValues().apply {
-            put(COLUMN_START_DATE, cycle.startDate)   // Начальная дата
-            put(COLUMN_END_DATE, cycle.endDate)       // Конечная дата
-            put(COLUMN_LENGTH, cycle.length)           // Длина цикла
-            put(COLUMN_CYCLES_SYMPTOMS, cycle.symptoms) // Симптомы
+            put(COLUMN_USER_ID, userId)                        // Добавляем идентификатор пользователя
+            put(COLUMN_START_DATE, cycle.startDate)           // Начальная дата
+            put(COLUMN_END_DATE, cycle.endDate)               // Конечная дата
+            put(COLUMN_LENGTH, cycle.length)                   // Длина цикла
+            put(COLUMN_CYCLES_SYMPTOMS, cycle.symptoms)      // Симптомы
         }
 
         // Вставляем новую запись в таблицу циклов
@@ -191,6 +220,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     }
 
 
+
     fun updateUser(userId: Long, name: String, login: String, password: String): Boolean {
         val db = this.writableDatabase
         val contentValues = ContentValues().apply {
@@ -201,22 +231,21 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return db.update(TABLE_USERS, contentValues, "$COLUMN_ID = ?", arrayOf(userId.toString())) > 0
     }
 
-    fun isDayMarkedAsMenstruation(userId: Long, date: String): Boolean {
+
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun isDayMarkedAsMenstruation(userId: Long, date: LocalDate): Boolean {
         val db = this.readableDatabase
-        val query = """
-        SELECT COUNT(*) FROM $TABLE_DAY_STATUS
-        WHERE $COLUMN_USER_ID = ? 
-        AND $COLUMN_DATE = ?
-        AND $COLUMN_DAY_STATUS = ?
-    """.trimIndent()
 
-        // Выполняем запрос, используя параметры пользователя и даты
-        val cursor = db.rawQuery(query, arrayOf(userId.toString(), date, DayStatus.MENSTRUATION.description))
-        val isMarked = cursor.moveToFirst() && cursor.getInt(0) > 0 // Проверяем, есть ли хотя бы одна запись
-
-        cursor.close() // Закрываем курсор для освобождения ресурсов
-        return isMarked // Возвращаем true, если запись существует и количество больше 0
+        val status = getDayStatus(userId, date)
+        return status == "Менструация"
     }
+
+
+
+
+
 
 
 
@@ -277,6 +306,36 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             cursor.close()
             false
         }
+    }
+    @SuppressLint("Range")
+    fun getAllCycles(userId: Long): List<Cycle> {
+        val cyclesList = mutableListOf<Cycle>()
+        val db = this.readableDatabase
+
+        // Изменяем SQL-запрос, чтобы получать только циклы для указанного пользователя
+        val cursor = db.rawQuery("SELECT * FROM $TABLE_CYCLES WHERE user_id = ?", arrayOf(userId.toString()))
+
+        // Проверяем, есть ли данные
+        if (cursor.moveToFirst()) {
+            do {
+                // Получаем данные из курсора
+                val id = cursor.getLong(cursor.getColumnIndex(COLUMN_CYCLES_ID))
+                val startDate = cursor.getString(cursor.getColumnIndex(COLUMN_START_DATE))
+                val endDate = cursor.getString(cursor.getColumnIndex(COLUMN_END_DATE))
+                val length = cursor.getInt(cursor.getColumnIndex(COLUMN_LENGTH))
+                val symptoms = cursor.getString(cursor.getColumnIndex(COLUMN_CYCLES_SYMPTOMS))
+
+                // Создаем объект Cycle и добавляем его в список
+                val cycle = Cycle(id, startDate, endDate, length, symptoms)
+                cyclesList.add(cycle)
+            } while (cursor.moveToNext())
+        }
+
+        // Закрываем курсор и базу данных
+        cursor.close()
+        db.close()
+
+        return cyclesList
     }
 
     fun getUserIdByLoginAndPassword(login: String, password: String): Long {
@@ -378,6 +437,33 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return isMarked
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun getLastOvulationDate(userId: Long): LocalDate? {
+        val db = this.readableDatabase
+        val query = """
+        SELECT date FROM day_status
+        WHERE user_id = ? AND status = ?
+        ORDER BY date DESC
+        LIMIT 1
+    """
+        val cursor = db.rawQuery(query, arrayOf(userId.toString(), "Овуляция"))
+
+        return if (cursor.moveToFirst()) {
+            val dateString = cursor.getString(cursor.getColumnIndexOrThrow("date"))
+            LocalDate.parse(dateString, DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+        } else {
+            null
+        }.also {
+            cursor.close()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun getLastPeriodStartDate(userId: Long): LocalDate? {
+        val cycleSettings = getCycleSettings(userId);
+        val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+        return  LocalDate.parse(cycleSettings?.get("lastPeriodDate") as String, formatter)
+    }
 
 
     // Методы работы с симптомами
@@ -460,18 +546,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     }
 
 
-    fun updateCycleSettings(userId: Long, cycleLength: Int, duration: Int, lastPeriodDate: String): Boolean {
-        val db = this.writableDatabase
-        val contentValues = ContentValues().apply {
-            put(COLUMN_CYCLE_LENGTH, cycleLength)
-            put(COLUMN_DURATION, duration)
-            put(COLUMN_LAST_PERIOD_DATE, lastPeriodDate)
-        }
-
-        val rowsAffected = db.update(TABLE_CYCLE_SETTINGS, contentValues, "$COLUMN_USER_ID = ?", arrayOf(userId.toString()))
-        return rowsAffected > 0
-    }
-
     // Методы для обновления флагов настроек
     fun updateCycleStartEnabled(userId: Long, isEnabled: Boolean): Boolean {
         val db = this.writableDatabase
@@ -518,34 +592,36 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             put(COLUMN_DATE, date.toString())
             put(COLUMN_DAY_STATUS, status)
             put(COLUMN_DAY_OF_CYCLE, dayOfCycle)
-            if (symptoms != null && symptoms.isNotEmpty()) {
-                put(COLUMN_SYMPTOMS, symptoms.joinToString(","))
+            symptoms?.let {
+                if (it.isNotEmpty()) {
+                    put(COLUMN_SYMPTOMS, it.joinToString(","))
+                }
             }
         }
 
         // Проверяем, существует ли запись для указанного userId и date
-        val existing = db.rawQuery(
+        val existingCursor = db.rawQuery(
             "SELECT $COLUMN_DAY_STATUS FROM $TABLE_DAY_STATUS WHERE $COLUMN_USER_ID = ? AND $COLUMN_DATE = ?",
             arrayOf(userId.toString(), date.toString())
         )
 
-        val result: Long
-        if (existing.moveToFirst()) {
-            // Обновляем существующую запись
-            result = db.update(
+        val result: Long = if (existingCursor.moveToFirst()) {
+            // Если запись существует, обновляем её
+            db.update(
                 TABLE_DAY_STATUS, contentValues,
                 "$COLUMN_USER_ID = ? AND $COLUMN_DATE = ?",
                 arrayOf(userId.toString(), date.toString())
             ).toLong()
         } else {
             // Вставляем новую запись
-            result = db.insert(TABLE_DAY_STATUS, null, contentValues)
+            db.insert(TABLE_DAY_STATUS, null, contentValues)
         }
 
-        existing.close()
-        db.close()
+        existingCursor.close()
+        db.close() // Закрываем базу данных только после завершения всех операций
         return result
     }
+
 
     @SuppressLint("Range")
     fun getCycleHistory(userId: Long): List<Cycle> {
