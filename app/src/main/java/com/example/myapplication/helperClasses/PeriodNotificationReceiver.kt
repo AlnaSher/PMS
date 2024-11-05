@@ -13,6 +13,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.myapplication.R
+import com.example.myapplication.database.DatabaseHelper
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Calendar
@@ -59,30 +60,35 @@ class PeriodNotificationReceiver : BroadcastReceiver() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun schedulePeriodNotification(context: Context, userId: Long, nextCycleDate: LocalDate, notificationType: String) {
+    fun scheduleOvulationNotification(context: Context, userId: Long, duration: Int) {
+        val dbHelper = DatabaseHelper(context)
+
+        // Получаем последнюю дату овуляции из базы данных
+        val lastOvulationDate = dbHelper.getLastOvulationDate(userId) // Этот метод должен вернуть LocalDate?
+        val today = LocalDate.now()
+        val nextOvulationDate = if (lastOvulationDate == null || lastOvulationDate.isBefore(today)) {
+            lastOvulationDate?.plusDays(duration.toLong())
+        } else {
+            lastOvulationDate
+        } ?: return  // Выход, если дата не определена
+
+        // Устанавливаем дату уведомления за день до овуляции в 12:00
+        val notificationDateTime = nextOvulationDate.minusDays(1).atTime(12, 0)
+        val notificationMillis = notificationDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        // Настраиваем Alarm для уведомления
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
-        // Устанавливаем дату и время для уведомления (на основе типа уведомления)
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = when (notificationType) {
-                "start_cycle" -> nextCycleDate.minusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                "ovulation" -> nextCycleDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                "period_reminder" -> nextCycleDate.minusDays(2).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() // Например, за два дня
-                else -> return // Неизвестный тип уведомления
-            }
-        }
-
         val intent = Intent(context, PeriodNotificationReceiver::class.java).apply {
-            putExtra("notification_type", notificationType)
+            putExtra("notification_type", "ovulation")
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            userId.toInt(), // или уникальный ID для пользователя
+            userId.toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Устанавливаем alarm, который сработает в указанное время
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+        // Запланировать Alarm на указанное время
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, notificationMillis, pendingIntent)
     }
 }

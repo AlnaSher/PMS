@@ -1,5 +1,6 @@
 package com.example.myapplication.activities
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -17,6 +18,9 @@ import com.example.myapplication.R
 import com.example.myapplication.database.DatabaseHelper
 import com.example.myapplication.helperClasses.PeriodNotificationReceiver
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 class CommonSettingsViewActivity : ComponentActivity() {
 
@@ -62,17 +66,20 @@ class CommonSettingsViewActivity : ComponentActivity() {
 
         loadSettings(userId)
 
+        val cycleSettings = databaseHelper.getCycleSettings(userId);
+        val duration = cycleSettings?.get("duration") as Int
+
         // Установка слушателей на переключатели с отправкой уведомлений
         switchStartOfPeriod.setOnCheckedChangeListener { _, isChecked ->
             databaseHelper.updateCycleStartEnabled(userId, isChecked)
-            if (isChecked) scheduleNotification("start_cycle", userId)
+            if (isChecked) schedulePeriodNotification(this@CommonSettingsViewActivity, userId, "start_cycle", duration)
             else cancelNotification(userId) // Отменяем уведомление, если выключено
             showToast("Настройка 'Начало месячных' сохранена")
         }
 
         switchOvulation.setOnCheckedChangeListener { _, isChecked ->
             databaseHelper.updateOvulationEnabled(userId, isChecked)
-            if (isChecked) scheduleNotification("ovulation", userId)
+            if (isChecked) schedulePeriodNotification(this@CommonSettingsViewActivity, userId, "ovulation", duration)
             else cancelNotification(userId) // Отменяем уведомление, если выключено
             showToast("Настройка 'Овуляция' сохранена")
         }
@@ -85,7 +92,7 @@ class CommonSettingsViewActivity : ComponentActivity() {
 
         switchPeriodInDays.setOnCheckedChangeListener { _, isChecked ->
             databaseHelper.updatePeriodEnabled(userId, isChecked)
-            if (isChecked) scheduleNotification("period_reminder", userId)
+            if (isChecked) schedulePeriodNotification(this@CommonSettingsViewActivity, userId, "period_reminder", duration)
             else cancelNotification(userId) // Отменяем уведомление, если выключено
             showToast("Настройка 'Месячные через пару дней' сохранена")
         }
@@ -144,19 +151,64 @@ class CommonSettingsViewActivity : ComponentActivity() {
         }
     }
 
-    // Метод для планирования уведомлений
+    @SuppressLint("ScheduleExactAlarm")
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun scheduleNotification(notificationType: String, userId: Long) {
-        // Получаем дату следующего цикла или овуляции
-        val nextCycleDate = LocalDate.now().plusDays(1) // Замените на реальную дату следующего цикла
-        val notificationReceiver = PeriodNotificationReceiver()
+    fun schedulePeriodNotification(context: Context, userId: Long, notificationType: String, duration: Int) {
+        val dbHelper = DatabaseHelper(context)
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val today = LocalDate.now()
 
-        when (notificationType) {
-            "start_cycle" -> notificationReceiver.schedulePeriodNotification(this, userId, nextCycleDate, "start_cycle")
-            "ovulation" -> notificationReceiver.schedulePeriodNotification(this, userId, nextCycleDate, "ovulation")
-            "period_reminder" -> notificationReceiver.schedulePeriodNotification(this, userId, nextCycleDate, "period_reminder")
+        val notificationTime = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 12)  // Устанавливаем время уведомления на 12:00 дня
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
         }
+
+        // Получаем дату последнего начала месячных или овуляции в зависимости от типа уведомления
+        val targetDate = when (notificationType) {
+            "start_cycle" -> {
+                // Получаем последнюю дату начала месячных
+                val lastPeriodStartDate = dbHelper.getLastPeriodStartDate(userId) ?: return
+                lastPeriodStartDate.plusDays(duration.toLong()) // Предполагаемая дата начала следующих месячных
+            }
+            "period_reminder" -> {
+                // Дата последних месячных + duration, но с уведомлением за три дня до
+                val lastPeriodStartDate = dbHelper.getLastPeriodStartDate(userId) ?: return
+                lastPeriodStartDate.plusDays(duration.toLong()).minusDays(3) // За три дня до начала
+            }
+            "ovulation" -> {
+                // Получаем последнюю дату овуляции
+                val lastOvulationDate = dbHelper.getLastOvulationDate(userId)
+                val nextOvulationDate = if (lastOvulationDate == null || lastOvulationDate.isBefore(today)) {
+                    lastOvulationDate?.plusDays(duration.toLong())
+                } else {
+                    lastOvulationDate
+                } ?: return
+                nextOvulationDate.minusDays(1) // Уведомление за день до предполагаемой овуляции
+            }
+            else -> return
+        }
+
+        // Устанавливаем время срабатывания уведомления
+        notificationTime.timeInMillis = targetDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        // Создаем Intent для передачи уведомления
+        val intent = Intent(context, PeriodNotificationReceiver::class.java).apply {
+            putExtra("notification_type", notificationType)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            userId.toInt(), // Уникальный ID для пользователя
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Устанавливаем точное срабатывание уведомления в указанное время
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, notificationTime.timeInMillis, pendingIntent)
     }
+
+
+
 
     // Метод для отмены уведомлений
     private fun cancelNotification(userId: Long) {

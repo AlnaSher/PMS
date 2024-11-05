@@ -45,9 +45,7 @@ class CycleSettingsActivity : ComponentActivity() {
         // Инициализация базы данных
         databaseHelper = DatabaseHelper(this)
 
-        // Получение userId из SharedPreferences
-        val sharedPreferences = getSharedPreferences("user_prefs", MODE_PRIVATE)
-        userId = sharedPreferences.getLong("user_id", -1)
+        userId = intent.getLongExtra("user_id", -1)
 
         // Загрузка настроек из базы данных, если они есть
         loadSettingsIfAvailable()
@@ -123,7 +121,7 @@ class CycleSettingsActivity : ComponentActivity() {
         }
 
         // Сохраняем данные о цикле в базу данных
-        val isSaved = databaseHelper.addCycleSettings(userId, cycleLength.toInt(), duration.toInt(), lastPeriodDate)
+        val isSaved = databaseHelper.addOrUpdateCycleSettings(userId, cycleLength.toInt(), duration.toInt(), lastPeriodDate)
 
         if (isSaved != -1L) {
             // Успешное сохранение настроек
@@ -145,6 +143,34 @@ class CycleSettingsActivity : ComponentActivity() {
     // Метод для автоматического заполнения дней с менструацией
     @RequiresApi(Build.VERSION_CODES.O)
     private fun addMenstrualDaysToDatabase(cycleLength: Int, duration: Int, lastPeriodDate: String) {
-        // (Оставляем реализацию этого метода без изменений)
+        val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        val startDate = Calendar.getInstance().apply {
+            time = sdf.parse(lastPeriodDate) ?: return
+        }
+
+        // Проверка на наличие записей о менструации
+        val existingMenstrualDays = databaseHelper.getMenstrualDays(userId)
+        if (existingMenstrualDays.isNotEmpty()) {
+            Log.d("CycleSettings", "Menstrual days already recorded in the database.")
+            return
+        }
+
+        val today = LocalDate.now()
+        for (i in 0 until cycleLength) {
+            // Преобразуем текущую дату из Calendar в LocalDate
+            val dateString = sdf.format(startDate.time)
+            val dateLocalDate = LocalDate.parse(dateString, DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+
+            // Прекращаем добавление, если достигли сегодняшней даты
+            if (dateLocalDate.isAfter(today)) break
+
+            val dayOfCycle = i + 1
+            databaseHelper.addOrUpdateDayStatus(userId, dateLocalDate, "Менструация", dayOfCycle)
+
+            // Переход к следующему дню
+            startDate.add(Calendar.DAY_OF_MONTH, 1)
+        }
+
+        Log.d("CycleSettings", "Menstrual days added to the database.")
     }
 }

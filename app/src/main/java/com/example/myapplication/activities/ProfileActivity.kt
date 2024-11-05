@@ -31,6 +31,9 @@ import java.util.*
 class ProfileActivity : ComponentActivity() {
 
     private lateinit var databaseHelper: DatabaseHelper
+    @RequiresApi(Build.VERSION_CODES.O)
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.getDefault())
+
 
     private var currentWeekOffset = 0
     private lateinit var adapter: CalendarAdapter
@@ -217,55 +220,62 @@ class ProfileActivity : ComponentActivity() {
             return
         }
 
-        databaseHelper.addCycleSettings(userId, cycleLength, duration, selectedDay.date.toString())
-
         // Устанавливаем статус дня и сохраняем его в базе данных
         selectedDay.status = DayStatus.MENSTRUATION
         dbHelper.addOrUpdateDayStatus(userId, selectedDay.date, selectedDay.status.description, 1) // Помечаем текущий день как день менструации
 
-        // Определяем дату окончания цикла
-        var endDate = selectedDay.date.minusDays(1) // Предыдущий день
+        // Проверяем, был ли отмечен предыдущий день как менструация
+        val previousDay = selectedDay.date.minusDays(1)
+        if (!dbHelper.isDayMarkedAsMenstruation(userId, previousDay.format(dateFormatter))) {
+            // Если предыдущий день не отмечен, продолжаем
+            // Определяем дату окончания цикла
+            var endDate = previousDay // Предыдущий день
 
-        // Проверяем, отмечен ли предыдущий день как менструация
-        while (dbHelper.isDayMarkedAsMenstruation(userId, endDate.toString())) {
-            endDate = endDate.minusDays(1) // Переходим к предыдущему дню
+            // Проверяем, отмечен ли предыдущий день как менструация
+            while (dbHelper.isDayMarkedAsMenstruation(userId, endDate.format(dateFormatter))) {
+                endDate = endDate.minusDays(1)
+            }
+
+            val endDateString = endDate.format(dateFormatter)
+
+            // Получаем все уникальные симптомы в интервале между startDate и endDate
+            val symptomsSet = mutableSetOf<String>() // Для хранения уникальных симптомов
+            val symptomsRecords = dbHelper.getSymptomsInCycle(userId, endDateString, selectedDay.date.toString())
+            for (symptom in symptomsRecords) {
+                symptomsSet.add(symptom) // Добавляем уникальные симптомы
+            }
+
+            // Формируем строку симптомов
+            val symptoms = symptomsSet.joinToString(", ")
+
+            // Создаем объект Cycle и сохраняем его в базе данных
+            val cycle = Cycle(
+                id = userId, // ID будет сгенерирован автоматически
+                startDate = lastPeriodDateString,
+                endDate = endDateString,
+                length = cycleLength,
+                symptoms = symptoms
+            )
+
+            dbHelper.insertCycle(cycle, userId) // Сохраняем цикл в базе данных
+
+            // Устанавливаем день овуляции только если:
+            // 1. Отмечен текущий день как менструация
+            // 2. Предыдущий день не отмечен как менструация
+            // 3. Предыдущий день не отмечен как овуляция
+            val ovulationDay = selectedDay.date.plusDays(14) // 14-й день от начала цикла
+
+            if (!dbHelper.isDayMarkedAsOvulation(userId, ovulationDay.toString())) {
+                dbHelper.addOrUpdateDayStatus(userId, ovulationDay, DayStatus.OVULATION.description, 1) // Помечаем день овуляции
+            }
+
+            // Обновляем адаптер и уведомляем пользователя
+            adapter.notifyDataSetChanged()
+            Toast.makeText(this, "Месячные отмечены и сохранены", Toast.LENGTH_SHORT).show()
+        } else {
+            // Если предыдущий день уже отмечен как менструация, уведомляем пользователя
+            Toast.makeText(this, "Предыдущий день уже отмечен как менструация. Цикл не сохранен.", Toast.LENGTH_SHORT).show()
         }
-
-        // Теперь endDate - последний день предыдущего цикла
-        val endDateString = endDate.toString()
-
-        // Получаем все уникальные симптомы в интервале между startDate и endDate
-        val symptomsSet = mutableSetOf<String>() // Для хранения уникальных симптомов
-        val symptomsRecords = dbHelper.getSymptomsInCycle(userId, endDateString, selectedDay.date.toString())
-        for (symptom in symptomsRecords) {
-            symptomsSet.add(symptom) // Добавляем уникальные симптомы
-        }
-
-        // Формируем строку симптомов
-        val symptoms = symptomsSet.joinToString(", ")
-
-        // Создаем объект Cycle и сохраняем его в базе данных
-        val cycle = Cycle(
-            id = userId, // ID будет сгенерирован автоматически
-            startDate = lastPeriodDateString,
-            endDate = endDateString,
-            length = cycleLength,
-            symptoms = symptoms
-        )
-
-        dbHelper.insertCycle(cycle) // Сохраняем цикл в базе данных
-
-        // Отмечаем день овуляции
-        val ovulationDay = selectedDay.date.plusDays(7) // 7-й день от начала цикла
-
-        // Проверяем, что день овуляции не отмечен и он не выходит за пределы цикла
-        if (!dbHelper.isDayMarkedAsOvulation(userId, ovulationDay.toString())) {
-            dbHelper.addOrUpdateDayStatus(userId, ovulationDay, DayStatus.OVULATION.description, 1) // Помечаем день овуляции
-        }
-
-        // Обновляем адаптер и уведомляем пользователя
-        adapter.notifyDataSetChanged()
-        Toast.makeText(this, "Месячные отмечены и сохранены", Toast.LENGTH_SHORT).show()
     }
 
 
@@ -376,8 +386,7 @@ class ProfileActivity : ComponentActivity() {
 
     // Прогноз симптомов на сегодня
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun showSymptomForecast(date: LocalDate) {
-        val symptomPrediction = "Сегодня возможны головные боли"  // Пример предсказания
-        textViewSymptomForecast.text = "Прогноз симптомов на сегодня: $symptomPrediction"
+    private fun showSymptomForecast(currentDate: LocalDate) {
+        textViewSymptomForecast.text = "Прогноз симптомов на ${currentDate.format(dateFormatter)}"
     }
 }

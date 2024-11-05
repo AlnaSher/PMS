@@ -1,38 +1,50 @@
 package com.example.myapplication.activities
-import CycleAdapter
-import android.content.pm.ActivityInfo
+
+import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageView
 import android.widget.ListView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import com.example.myapplication.R
+import com.example.myapplication.adapters.CycleAdapter
 import com.example.myapplication.database.DatabaseHelper
 
-class StatisticsActivity : AppCompatActivity() {
+class StatisticsActivity : ComponentActivity() {
 
-    private lateinit var cycleHistoryListView: ListView
+    private lateinit var listView: ListView
+    private lateinit var cyclesAdapter: CycleAdapter
     private lateinit var databaseHelper: DatabaseHelper
 
+    @SuppressLint("WrongViewCast")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val isTablet = resources.getBoolean(R.bool.is_tablet)
-        if (!isTablet) {
-            // Если это телефон, фиксируем ориентацию в портретной
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
         setContentView(R.layout.activity_statistics)
-        val userId = intent.getLongExtra("user_id", -1)
 
-        cycleHistoryListView = findViewById(R.id.cycleHistoryListView)
+        val userId = intent.getLongExtra("user_id", -1)
         databaseHelper = DatabaseHelper(this)
 
-        loadCycleData(userId)
+        // Handle "Back" button
+        val backButton: ImageView = findViewById(R.id.imageBackButton)
+        backButton.setOnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java)
+            intent.putExtra("user_id", userId)
+            startActivity(intent)
+            finish()
+        }
+
+        // Initialize ListView
+        listView = findViewById(R.id.cycleHistoryListView)
+
+        loadCycles(userId)
     }
 
-    private fun loadCycleData(userId: Long) {
-        // Получите данные о циклах из базы данных
-        val cycles = databaseHelper.getCycleHistory(userId) // Метод для получения истории циклов
-        val adapter = CycleAdapter(this, cycles)
+    private fun loadCycles(userId: Long) {
+        // Retrieve data from database
+        val cycles = databaseHelper.getAllCycles(userId) // Assumes it returns List<Cycle>
 
-        cycleHistoryListView.adapter = adapter
+        // Set up adapter for ListView
+        cyclesAdapter = CycleAdapter(this, cycles)
+        listView.adapter = cyclesAdapter
     }
 }

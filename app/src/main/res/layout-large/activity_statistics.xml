@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:padding="24dp"> <!-- Increased padding for larger screens -->
 
     <!-- Header Section -->
     <LinearLayout
@@ -10,7 +10,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:padding="8dp"> <!-- Additional padding -->
 
         <ImageView
             android:id="@+id/imageBackButton"
@@ -23,11 +24,11 @@
             android:id="@+id/statisticsTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="12dp"
             android:text="Статистика циклов"
             android:textColor="@color/black"
-            android:textSize="24sp"
-            android:textStyle="bold" /> <!-- Margin for spacing from back button -->
+            android:textSize="34sp"
+            android:textStyle="bold" /> <!-- Increased margin -->
     </LinearLayout>
 
     <!-- Scrollable List Content -->
@@ -35,6 +36,6 @@
         android:id="@+id/cycleHistoryListView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/headerLayout"
-        android:layout_marginTop="7dp" />
+        android:layout_below="@id/headerLayout"
+        android:layout_marginTop="12dp" /> <!-- Increased top margin -->
 </RelativeLayout>

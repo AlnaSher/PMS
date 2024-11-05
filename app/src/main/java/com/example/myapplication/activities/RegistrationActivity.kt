@@ -9,10 +9,12 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import com.example.myapplication.R
+import com.example.myapplication.helperClasses.NativeLib
 
 class RegistrationActivity : ComponentActivity() {
 
     private lateinit var databaseHelper: DatabaseHelper
+    private lateinit var nativeLib: NativeLib
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,6 +25,7 @@ class RegistrationActivity : ComponentActivity() {
         }
         setContentView(R.layout.activity_registration)
 
+        nativeLib = NativeLib()
         // Инициализация базы данных
         databaseHelper = DatabaseHelper(this)
 
@@ -32,7 +35,6 @@ class RegistrationActivity : ComponentActivity() {
         val editTextLogin = findViewById<EditText>(R.id.editTextLoginRegistr)
         val editTextPassword = findViewById<EditText>(R.id.editTextPasswordReg)
 
-        // Обработка нажатия кнопки "Авторизация"
         buttonLogin.setOnClickListener {
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
@@ -45,6 +47,11 @@ class RegistrationActivity : ComponentActivity() {
 
             if (name.isNotEmpty() && login.isNotEmpty() && password.isNotEmpty()) {
                 // Добавление пользователя в базу данных
+                if (nativeLib.isUserValid(login, password)) {
+                    Toast.makeText(this, "Пользователь с таким именем уже существует.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
                 val userId = databaseHelper.addUser(name, login, password)
 
                 if (userId != -1L) {
@@ -70,4 +77,3 @@ class RegistrationActivity : ComponentActivity() {
         }
     }
 }
-
